@@ -1,0 +1,191 @@
+1.
+CREATE DATABASE pandemic;
+
+USE pandemic;
+
+2.1
+CREATE TABLE Country (
+    Country_ID INT AUTO_INCREMENT PRIMARY KEY,
+    Entity VARCHAR(255) NOT NULL,
+    Code VARCHAR(10) NOT NULL
+);
+
+INSERT INTO Country (Entity, Code)
+SELECT DISTINCT Entity, Code
+FROM infectious_cases;
+
+2.2
+CREATE TABLE Disease_Cases (
+    Case_ID INT AUTO_INCREMENT PRIMARY KEY,
+    Country_ID INT,
+    Year INT,
+    Disease_Type VARCHAR(255),
+    Number_of_Cases DECIMAL(15,2),  -- Using DECIMAL to handle numeric values with precision
+    FOREIGN KEY (Country_ID) REFERENCES Country(Country_ID)
+);
+
+2.3
+-- Insert Yaws Cases
+INSERT INTO Disease_Cases (Country_ID, Year, Disease_Type, Number_of_Cases)
+SELECT 
+    c.Country_ID, 
+    ic.Year, 
+    'Yaws', 
+    CAST(ic.Number_yaws AS DECIMAL(15,2))  -- Safe casting to handle numeric values
+FROM infectious_cases ic
+JOIN Country c ON ic.Entity = c.Entity AND ic.Code = c.Code
+WHERE ic.Number_yaws REGEXP '^-?[0-9]+(\.[0-9]+)?$'  -- Ensure only numeric values
+  AND ic.Number_yaws IS NOT NULL;
+
+-- Insert Polio Cases
+INSERT INTO Disease_Cases (Country_ID, Year, Disease_Type, Number_of_Cases)
+SELECT 
+    c.Country_ID, 
+    ic.Year, 
+    'Polio', 
+    CAST(ic.polio_cases AS DECIMAL(15,2))
+FROM infectious_cases ic
+JOIN Country c ON ic.Entity = c.Entity AND ic.Code = c.Code
+WHERE ic.polio_cases REGEXP '^-?[0-9]+(\.[0-9]+)?$'
+  AND ic.polio_cases IS NOT NULL;
+
+-- Insert Guinea Worm Cases
+INSERT INTO Disease_Cases (Country_ID, Year, Disease_Type, Number_of_Cases)
+SELECT 
+    c.Country_ID, 
+    ic.Year, 
+    'Guinea Worm', 
+    CAST(ic.cases_guinea_worm AS DECIMAL(15,2))
+FROM infectious_cases ic
+JOIN Country c ON ic.Entity = c.Entity AND ic.Code = c.Code
+WHERE ic.cases_guinea_worm REGEXP '^-?[0-9]+(\.[0-9]+)?$'
+  AND ic.cases_guinea_worm IS NOT NULL;
+
+-- Insert Rabies Cases
+INSERT INTO Disease_Cases (Country_ID, Year, Disease_Type, Number_of_Cases)
+SELECT 
+    c.Country_ID, 
+    ic.Year, 
+    'Rabies', 
+    CAST(ic.Number_rabies AS DECIMAL(15,2))
+FROM infectious_cases ic
+JOIN Country c ON ic.Entity = c.Entity AND ic.Code = c.Code
+WHERE ic.Number_rabies REGEXP '^-?[0-9]+(\.[0-9]+)?$'
+  AND ic.Number_rabies IS NOT NULL;
+
+-- Insert Malaria Cases
+INSERT INTO Disease_Cases (Country_ID, Year, Disease_Type, Number_of_Cases)
+SELECT 
+    c.Country_ID, 
+    ic.Year, 
+    'Malaria', 
+    CAST(ic.Number_malaria AS DECIMAL(15,2))
+FROM infectious_cases ic
+JOIN Country c ON ic.Entity = c.Entity AND ic.Code = c.Code
+WHERE ic.Number_malaria REGEXP '^-?[0-9]+(\.[0-9]+)?$'
+  AND ic.Number_malaria IS NOT NULL;
+
+-- Insert HIV Cases
+INSERT INTO Disease_Cases (Country_ID, Year, Disease_Type, Number_of_Cases)
+SELECT 
+    c.Country_ID, 
+    ic.Year, 
+    'HIV', 
+    CAST(ic.Number_hiv AS DECIMAL(15,2))
+FROM infectious_cases ic
+JOIN Country c ON ic.Entity = c.Entity AND ic.Code = c.Code
+WHERE ic.Number_hiv REGEXP '^-?[0-9]+(\.[0-9]+)?$'
+  AND ic.Number_hiv IS NOT NULL;
+
+-- Insert Tuberculosis Cases
+INSERT INTO Disease_Cases (Country_ID, Year, Disease_Type, Number_of_Cases)
+SELECT 
+    c.Country_ID, 
+    ic.Year, 
+    'Tuberculosis', 
+    CAST(ic.Number_tuberculosis AS DECIMAL(15,2))
+FROM infectious_cases ic
+JOIN Country c ON ic.Entity = c.Entity AND ic.Code = c.Code
+WHERE ic.Number_tuberculosis REGEXP '^-?[0-9]+(\.[0-9]+)?$'
+  AND ic.Number_tuberculosis IS NOT NULL;
+
+-- Insert Smallpox Cases
+INSERT INTO Disease_Cases (Country_ID, Year, Disease_Type, Number_of_Cases)
+SELECT 
+    c.Country_ID, 
+    ic.Year, 
+    'Smallpox', 
+    CAST(ic.Number_smallpox AS DECIMAL(15,2))
+FROM infectious_cases ic
+JOIN Country c ON ic.Entity = c.Entity AND ic.Code = c.Code
+WHERE ic.Number_smallpox REGEXP '^-?[0-9]+(\.[0-9]+)?$'
+  AND ic.Number_smallpox IS NOT NULL;
+
+-- Insert Cholera Cases
+INSERT INTO Disease_Cases (Country_ID, Year, Disease_Type, Number_of_Cases)
+SELECT 
+    c.Country_ID, 
+    ic.Year, 
+    'Cholera', 
+    CAST(ic.Number_cholera_cases AS DECIMAL(15,2))
+FROM infectious_cases ic
+JOIN Country c ON ic.Entity = c.Entity AND ic.Code = c.Code
+WHERE ic.Number_cholera_cases REGEXP '^-?[0-9]+(\.[0-9]+)?$'
+  AND ic.Number_cholera_cases IS NOT NULL;
+
+3.
+SELECT 
+    c.Entity,
+    c.Code,
+    AVG(dc.Number_of_Cases) AS Average_Rabies,
+    MIN(dc.Number_of_Cases) AS Min_Rabies,
+    MAX(dc.Number_of_Cases) AS Max_Rabies,
+    SUM(dc.Number_of_Cases) AS Total_Rabies
+FROM 
+    Disease_Cases dc
+JOIN 
+    Country c ON dc.Country_ID = c.Country_ID
+WHERE 
+    dc.Disease_Type = 'Rabies'
+    AND dc.Number_of_Cases IS NOT NULL  -- Ensure we exclude NULL values
+GROUP BY 
+    c.Entity, c.Code
+ORDER BY 
+    Average_Rabies DESC
+LIMIT 10;
+
+4.
+SELECT 
+    Year,
+    CONCAT(Year, '-01-01') AS First_Jan_Date,
+    CURDATE() as Date_Now,  -- Тут важлива кома!
+    TIMESTAMPDIFF(YEAR, CONCAT(Year, '-01-01'), DATE(NOW())) AS Year_Difference
+FROM 
+    Disease_Cases;
+
+5.
+DELIMITER $$
+
+CREATE FUNCTION YearDifference(input_year INT) 
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE first_jan_date DATE;
+    DECLARE year_diff INT;
+
+    SET first_jan_date = CONCAT(input_year, '-01-01');
+
+    SET year_diff = TIMESTAMPDIFF(YEAR, first_jan_date, CURDATE());
+
+    RETURN year_diff;
+END$$
+
+DELIMITER ;
+
+SELECT 
+    Year,
+    CONCAT(Year, '-01-01') AS First_Jan_Date,
+    CURDATE() AS Date_Now,
+    YearDifference(Year) AS Year_Difference
+FROM 
+    Disease_Cases;
